@@ -49,11 +49,13 @@ CREATE TABLE product_pricing (
     product_id  INTEGER NOT NULL,
     customer_id INTEGER NOT NULL,
     discount    NUMERIC(5, 2) NOT NULL DEFAULT 0,
+    valid_from  DATE,
+    valid_to    DATE,
     created_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (product_id) REFERENCES products (id) ON DELETE CASCADE,
     FOREIGN KEY (customer_id) REFERENCES customer (id) ON DELETE CASCADE,
-    UNIQUE (product_id, customer_id)
+    UNIQUE (product_id, customer_id, valid_from)
 );
 
 CREATE INDEX idx_product_pricing_product_id ON product_pricing (product_id);
