@@ -29,10 +29,10 @@ def insert(table: str, data: dict[str, Any]) -> dict[str, Any]:
 
 
 def select_all(table: str) -> list[dict[str, Any]]:
-    """Return all rows from a table."""
+    """Return all rows from a table, excluding soft-deleted ones."""
     conn = get_connection()
     try:
-        rows = conn.execute(f"SELECT * FROM {table}").fetchall()
+        rows = conn.execute(f"SELECT * FROM {table} WHERE deleted = 0").fetchall()
         return [dict(row) for row in rows]
     finally:
         conn.close()
@@ -41,12 +41,12 @@ def select_all(table: str) -> list[dict[str, Any]]:
 def select_one(
     table: str, row_id: int, conn: Optional[sqlite3.Connection] = None
 ) -> dict[str, Any]:
-    """Return a single row by id, or raise 404."""
+    """Return a single, non-deleted row by id, or raise 404."""
     own_conn = conn is None
     conn = conn or get_connection()
     try:
         row = conn.execute(
-            f"SELECT * FROM {table} WHERE id = ?", (row_id,)
+            f"SELECT * FROM {table} WHERE id = ? AND deleted = 0", (row_id,)
         ).fetchone()
         if row is None:
             raise HTTPException(status_code=404, detail=f"{table} {row_id} not found")
@@ -57,10 +57,15 @@ def select_one(
 
 
 def delete(table: str, row_id: int) -> None:
-    """Delete a row by id, or raise 404 if it does not exist."""
+    """Soft-delete a row by setting its `deleted` flag, or raise 404.
+
+    A row that is missing or already deleted yields a 404.
+    """
     conn = get_connection()
     try:
-        cur = conn.execute(f"DELETE FROM {table} WHERE id = ?", (row_id,))
+        cur = conn.execute(
+            f"UPDATE {table} SET deleted = 1 WHERE id = ? AND deleted = 0", (row_id,)
+        )
         conn.commit()
         if cur.rowcount == 0:
             raise HTTPException(status_code=404, detail=f"{table} {row_id} not found")
