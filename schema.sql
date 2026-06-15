@@ -3,7 +3,7 @@ CREATE TABLE products (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     name        TEXT NOT NULL,
     description TEXT,
-    sku         TEXT UNIQUE,
+    sku         TEXT,
     currency    TEXT NOT NULL DEFAULT 'USD',
     is_active   BOOLEAN NOT NULL DEFAULT 1,
     deleted     BOOLEAN NOT NULL DEFAULT 0,
@@ -11,7 +11,8 @@ CREATE TABLE products (
     updated_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_products_sku ON products (sku);
+-- Unique only among rows that are not soft-deleted.
+CREATE UNIQUE INDEX idx_products_sku ON products (sku) WHERE deleted = 0;
 CREATE INDEX idx_products_is_active ON products (is_active);
 
 -- Stock table (price and stock level per product)
@@ -31,9 +32,12 @@ CREATE INDEX idx_stock_product_id ON stock (product_id);
 -- Lookup table describing the different kinds of customer.
 CREATE TABLE customer_type (
     id      INTEGER PRIMARY KEY AUTOINCREMENT,
-    name    TEXT NOT NULL UNIQUE,
+    name    TEXT NOT NULL,
     deleted BOOLEAN NOT NULL DEFAULT 0
 );
+
+-- Unique name only among rows that are not soft-deleted.
+CREATE UNIQUE INDEX idx_customer_type_name ON customer_type (name) WHERE deleted = 0;
 
 -- Customer table. Each customer references a row in customer_type.
 CREATE TABLE customer (
@@ -59,9 +63,11 @@ CREATE TABLE product_pricing (
     created_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (product_id) REFERENCES products (id) ON DELETE CASCADE,
-    FOREIGN KEY (customer_id) REFERENCES customer (id) ON DELETE CASCADE,
-    UNIQUE (product_id, customer_id, valid_from)
+    FOREIGN KEY (customer_id) REFERENCES customer (id) ON DELETE CASCADE
 );
 
+-- One active discount per (product, customer, valid_from), ignoring soft-deleted rows.
+CREATE UNIQUE INDEX idx_product_pricing_unique
+    ON product_pricing (product_id, customer_id, valid_from) WHERE deleted = 0;
 CREATE INDEX idx_product_pricing_product_id ON product_pricing (product_id);
 CREATE INDEX idx_product_pricing_customer_id ON product_pricing (customer_id);
