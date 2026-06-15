@@ -39,7 +39,10 @@ For every resource:
 | `POST   /{resource}`        | add a row             |
 | `GET    /{resource}`        | select all rows       |
 | `GET    /{resource}/{id}`   | select a single row   |
-| `DELETE /{resource}/{id}`   | delete a row          |
+| `DELETE /{resource}/{id}`   | soft-delete a row     |
+
+Deletes are soft: the row's `deleted` flag is set to `1` rather than the row
+being removed, and soft-deleted rows are excluded from all `select` responses.
 
 ### Example
 

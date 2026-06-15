@@ -6,6 +6,7 @@ CREATE TABLE products (
     sku         TEXT UNIQUE,
     currency    TEXT NOT NULL DEFAULT 'USD',
     is_active   BOOLEAN NOT NULL DEFAULT 1,
+    deleted     BOOLEAN NOT NULL DEFAULT 0,
     created_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -19,6 +20,7 @@ CREATE TABLE stock (
     product_id  INTEGER NOT NULL,
     price       NUMERIC(10, 2) NOT NULL DEFAULT 0,
     quantity    INTEGER NOT NULL DEFAULT 0,
+    deleted     BOOLEAN NOT NULL DEFAULT 0,
     created_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (product_id) REFERENCES products (id) ON DELETE CASCADE
@@ -28,8 +30,9 @@ CREATE INDEX idx_stock_product_id ON stock (product_id);
 
 -- Lookup table describing the different kinds of customer.
 CREATE TABLE customer_type (
-    id   INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL UNIQUE
+    id      INTEGER PRIMARY KEY AUTOINCREMENT,
+    name    TEXT NOT NULL UNIQUE,
+    deleted BOOLEAN NOT NULL DEFAULT 0
 );
 
 -- Customer table. Each customer references a row in customer_type.
@@ -38,6 +41,7 @@ CREATE TABLE customer (
     name             TEXT NOT NULL,
     address          TEXT,
     customer_type_id INTEGER NOT NULL,
+    deleted          BOOLEAN NOT NULL DEFAULT 0,
     FOREIGN KEY (customer_type_id) REFERENCES customer_type (id)
 );
 
@@ -51,6 +55,7 @@ CREATE TABLE product_pricing (
     discount    NUMERIC(5, 2) NOT NULL DEFAULT 0,
     valid_from  DATE,
     valid_to    DATE,
+    deleted     BOOLEAN NOT NULL DEFAULT 0,
     created_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (product_id) REFERENCES products (id) ON DELETE CASCADE,
