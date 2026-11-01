@@ -1,11 +1,12 @@
-"""REST API exposing add / select / delete operations for each table.
+"""REST API exposing add / select / delete / restore operations for each table.
 
-For every table there are three endpoints:
+For every table there are these endpoints:
 
     POST   /{resource}          -> add a row
     GET    /{resource}          -> select all rows
     GET    /{resource}/{id}     -> select a single row
-    DELETE /{resource}/{id}     -> delete a row
+    DELETE /{resource}/{id}     -> soft-delete a row
+    POST   /{resource}/{id}/restore -> restore a soft-deleted row
 """
 from typing import Type
 
@@ -41,7 +42,7 @@ RESOURCES: dict[str, tuple[str, Type[BaseModel]]] = {
 
 
 def register_routes(resource: str, table: str, model: Type[BaseModel]) -> None:
-    """Wire up add/select/delete endpoints for a single table."""
+    """Wire up add/select/delete/restore endpoints for a single table."""
 
     @app.post(f"/{resource}", status_code=201, tags=[resource])
     def add(payload: model) -> dict:  # type: ignore[valid-type]
@@ -59,6 +60,10 @@ def register_routes(resource: str, table: str, model: Type[BaseModel]) -> None:
     @app.delete(f"/{resource}/{{row_id}}", status_code=204, tags=[resource])
     def delete(row_id: int) -> None:
         crud.delete(table, row_id)
+
+    @app.post(f"/{resource}/{{row_id}}/restore", tags=[resource])
+    def restore(row_id: int) -> dict:
+        return crud.restore(table, row_id)
 
 
 for _resource, (_table, _model) in RESOURCES.items():

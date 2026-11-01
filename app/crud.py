@@ -1,6 +1,6 @@
 """Generic, table-agnostic CRUD helpers built on top of sqlite3.
 
-Every endpoint resolves to one of these three operations. The table name is
+Every endpoint resolves to one of these operations. The table name is
 never taken from user input — callers pass a hard-coded, validated table name
 from the route definitions, so string interpolation here is safe.
 """
@@ -69,5 +69,40 @@ def delete(table: str, row_id: int) -> None:
         conn.commit()
         if cur.rowcount == 0:
             raise HTTPException(status_code=404, detail=f"{table} {row_id} not found")
+    finally:
+        conn.close()
+
+
+def restore(table: str, row_id: int) -> dict[str, Any]:
+    """Restore a soft-deleted row by clearing its `deleted` flag.
+
+    Raises 404 if there is no soft-deleted row with this id (missing or
+    already active), and 409 if restoring it would violate a partial unique
+    index because an active row already holds the same unique value(s).
+    """
+    conn = get_connection()
+    try:
+        try:
+            cur = conn.execute(
+                f"UPDATE {table} SET deleted = 0 WHERE id = ? AND deleted = 1",
+                (row_id,),
+            )
+        except sqlite3.IntegrityError as exc:
+            conn.rollback()
+            if "UNIQUE" in str(exc):
+                raise HTTPException(
+                    status_code=409,
+                    detail=(
+                        f"cannot restore {table} {row_id}: an active row with the "
+                        f"same unique value already exists ({exc})"
+                    ),
+                ) from exc
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        if cur.rowcount == 0:
+            raise HTTPException(
+                status_code=404, detail=f"deleted {table} {row_id} not found"
+            )
+        conn.commit()
+        return select_one(table, row_id, conn=conn)
     finally:
         conn.close()
